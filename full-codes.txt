@@ -3,6 +3,17 @@
 #include <math.h>
 #include <windows.h>
 
+float moveC = 0.0f;
+float moveB1 = 0.0f;
+float moveB2 = 0.0f;
+float moveBird = -15.0f;
+float smokeOff = 0.0f;
+float rayAngle = 0.0f;
+float speed = 0.02f;
+
+void DrawAllComponents();
+
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  REUSABLE PRIMITIVE HELPERS
 // ══════════════════════════════════════════════════════════════════════════════
@@ -298,6 +309,21 @@ void DrawHouse(float x, float y)
     glEnd();
 }
 
+// ── Pointed fence post ────────────────────────────────────────────────────────
+void DrawFencePost(float x, float y)
+{
+    glColor3ub(198, 165, 112);
+    glBegin(GL_QUADS);
+        glVertex2f(x-0.10f, y);       glVertex2f(x+0.10f, y);
+        glVertex2f(x+0.10f, y+0.82f); glVertex2f(x-0.10f, y+0.82f);
+    glEnd();
+    glBegin(GL_TRIANGLES);
+        glVertex2f(x-0.10f, y+0.82f);
+        glVertex2f(x,        y+1.02f);
+        glVertex2f(x+0.10f, y+0.82f);
+    glEnd();
+}
+
 // ── Spherical bush cluster ────────────────────────────────────────────────────
 void DrawBush(float x, float y, float r,
               unsigned char R, unsigned char G, unsigned char B)
@@ -308,9 +334,26 @@ void DrawBush(float x, float y, float r,
     glPushMatrix(); glTranslatef(x,          y+r*0.3f, 0.0f); glutSolidSphere(r*0.8f, 18, 18); glPopMatrix();
 }
 
+// ── Animated smoke puffs ──────────────────────────────────────────────────────
+void DrawSmoke(float cx, float baseY)
+{
+    for (int i = 0; i < 4; i++) {
+        float t  = fmodf(smokeOff + i * 0.25f, 1.0f);
+        float sx = cx + 0.28f * sinf(t * 6.28318f);
+        float sy = baseY + t * 2.2f;
+        float sr = 0.10f + t * 0.22f;
+        unsigned char c = (unsigned char)(172 + (int)(t * 58.0f));
+        glColor3ub(c, c, c);
+        glPushMatrix();
+            glTranslatef(sx, sy, 0.0f);
+            glutSolidSphere(sr, 14, 14);
+        glPopMatrix();
+    }
+}
+
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  SCENE SECTION FUNCTIONS
+//  SCENE SECTION FUNCTIONS  (called in back-to-front order by DrawAllComponents)
 // ══════════════════════════════════════════════════════════════════════════════
 
 // 1. Sky gradient (deep blue at top → pale blue at horizon)
@@ -322,7 +365,7 @@ void DrawSky()
     glEnd();
 }
 
-// 2. Static sun – three glow rings + core (no rotating rays)
+// 2. Sun – three glow rings + core + rotating rays
 void DrawSun()
 {
     glColor3ub(255, 205, 52);
@@ -331,11 +374,10 @@ void DrawSun()
     glPushMatrix(); glTranslatef(31.5f, 11.5f, 0.0f); glutSolidSphere(1.3f, 48, 48); glPopMatrix();
     glColor3ub(255, 255, 185);
     glPushMatrix(); glTranslatef(31.5f, 11.5f, 0.0f); glutSolidSphere(0.88f, 48, 48); glPopMatrix();
-    // Static rays at fixed angles
     glColor3ub(255, 232, 75);
     glLineWidth(2.2f);
     for (int i = 0; i < 12; i++) {
-        float a = i * (3.14159f * 2.0f / 12.0f);
+        float a = rayAngle + i * (3.14159f * 2.0f / 12.0f);
         glBegin(GL_LINES);
             glVertex2f(31.5f + 2.1f * cosf(a), 11.5f + 2.1f * sinf(a));
             glVertex2f(31.5f + 3.5f * cosf(a), 11.5f + 3.5f * sinf(a));
@@ -343,7 +385,40 @@ void DrawSun()
     }
 }
 
-// 3. Far mountains with snow caps + peak highlights
+// 3. Three drifting cloud formations
+void DrawClouds()
+{
+    glColor3ub(255, 255, 255);
+    // Cloud 1
+    glPushMatrix(); glTranslatef(moveC, 0.0f, 0.0f);
+    glPushMatrix(); glTranslatef( 1.0f,6.0f,0); glutSolidSphere(0.7f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef( 1.0f,7.0f,0); glutSolidSphere(0.7f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef( 2.0f,7.0f,0); glutSolidSphere(0.7f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef( 2.0f,6.0f,0); glutSolidSphere(0.7f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef( 0.0f,6.5f,0); glutSolidSphere(0.7f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef( 3.0f,6.5f,0); glutSolidSphere(0.7f,30,30); glPopMatrix();
+    glPopMatrix();
+    // Cloud 2
+    glPushMatrix(); glTranslatef(moveC, 0.0f, 0.0f);
+    glPushMatrix(); glTranslatef(15.0f,9.0f,0); glutSolidSphere(0.8f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef(15.0f,8.0f,0); glutSolidSphere(0.8f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef(16.0f,8.0f,0); glutSolidSphere(0.8f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef(16.0f,9.0f,0); glutSolidSphere(0.8f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef(14.0f,8.5f,0); glutSolidSphere(0.8f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef(17.0f,8.5f,0); glutSolidSphere(0.8f,30,30); glPopMatrix();
+    glPopMatrix();
+    // Cloud 3
+    glPushMatrix(); glTranslatef(moveC, 0.0f, 0.0f);
+    glPushMatrix(); glTranslatef(22.0f,8.0f,0); glutSolidSphere(0.75f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef(22.0f,7.0f,0); glutSolidSphere(0.75f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef(23.0f,8.0f,0); glutSolidSphere(0.75f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef(23.0f,7.0f,0); glutSolidSphere(0.75f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef(24.0f,7.5f,0); glutSolidSphere(0.75f,30,30); glPopMatrix();
+    glPushMatrix(); glTranslatef(21.0f,7.5f,0); glutSolidSphere(0.75f,30,30); glPopMatrix();
+    glPopMatrix();
+}
+
+// 4. Far mountains with snow caps + peak highlights
 void DrawMountains()
 {
     // Mountain body
@@ -370,7 +445,7 @@ void DrawMountains()
     glEnd();
 }
 
-// 4. Near hills – three layered polygons with grass texture patches on crests
+// 5. Near hills – three layered polygons with grass texture patches on crests
 void DrawHills()
 {
     // Back hill layer (slightly muted green)
@@ -406,7 +481,7 @@ void DrawHills()
     glEnd();
 }
 
-// 5. River – static water body only (no animated waves)
+// 6. River water body + animated wave ripples + bright highlight streaks
 void DrawRiver()
 {
     // Water body (gradient: darker at bottom, lighter near surface)
@@ -420,9 +495,31 @@ void DrawRiver()
         glVertex2f(-12,-11.55f); glVertex2f(38,-11.55f);
         glVertex2f(38, -11.0f);  glVertex2f(-12,-11.0f);
     glEnd();
+
+    // Wave ripple lines
+    glColor3ub(80, 135, 238);
+    glLineWidth(1.1f);
+    for (int i = 0; i < 7; i++) {
+        float wy = -11.8f - i * 1.1f;
+        glBegin(GL_LINE_STRIP);
+            for (float wx = -12.0f; wx <= 38.0f; wx += 0.32f)
+                glVertex2f(wx, wy + 0.24f * sinf(wx * 1.3f + moveB1 * 2.5f));
+        glEnd();
+    }
+    // Bright highlight ripple streaks
+    glColor3ub(128, 185, 255);
+    glLineWidth(0.8f);
+    for (int i = 0; i < 3; i++) {
+        float wy = -12.8f - i * 2.2f;
+        glBegin(GL_LINE_STRIP);
+            for (float wx = -12.0f; wx <= 38.0f; wx += 0.5f)
+                glVertex2f(wx, wy + 0.14f * sinf(wx * 0.85f - moveB1 * 1.6f));
+        glEnd();
+    }
 }
 
-// 6. Ground – plain green ground (no bank border strips, no reeds, no path)
+// 7. Ground + river-land bank differentiator (wet mud → sandy bank → grass
+//    transition with reed row) + dirt path
 void DrawGround()
 {
     // Main green ground polygon
@@ -438,9 +535,57 @@ void DrawGround()
         glVertex2f(-12, 2.1f); glVertex2f(38, 2.6f);
         glVertex2f( 38, 3.0f); glVertex2f(-12, 3.0f);
     glEnd();
+
+    // ── River–land boundary: layered shoreline ─────────────────────────────────
+    // Wet mud edge right at the waterline
+    glColor3ub(118, 88, 50);
+    glBegin(GL_QUADS);
+        glVertex2f(-12,-11.42f); glVertex2f(38,-11.42f);
+        glVertex2f(38, -10.90f); glVertex2f(-12,-10.90f);
+    glEnd();
+    // Sandy/mud bank strip
+    glColor3ub(172, 140, 88);
+    glBegin(GL_QUADS);
+        glVertex2f(-12,-10.90f); glVertex2f(38,-10.90f);
+        glVertex2f(38, -10.30f); glVertex2f(-12,-10.30f);
+    glEnd();
+    // Grass-bank transition strip
+    glColor3ub(52, 135, 32);
+    glBegin(GL_QUADS);
+        glVertex2f(-12,-10.30f); glVertex2f(38,-10.30f);
+        glVertex2f(38, -10.08f); glVertex2f(-12,-10.08f);
+    glEnd();
+
+    // Reed/cattail row along the bank
+    float reedX[] = {-9.5f,-6.5f,-3.2f,0.5f,3.8f,7.2f,10.5f,14.0f,17.5f,
+                     21.0f,24.5f,27.8f,31.2f,34.8f};
+    int   reedN   = 14;
+    for (int i = 0; i < reedN; i++) {
+        // Stalk
+        glColor3ub(55, 90, 20);
+        glLineWidth(1.3f);
+        glBegin(GL_LINES);
+            glVertex2f(reedX[i], -11.30f);
+            glVertex2f(reedX[i], -10.08f);
+        glEnd();
+        // Cattail seed-head (dark brown, scaled ellipse via sphere+scale)
+        glColor3ub(88, 52, 16);
+        glPushMatrix();
+            glTranslatef(reedX[i], -10.08f, 0.0f);
+            glScalef(0.07f, 0.24f, 1.0f);
+            glutSolidSphere(1.0f, 8, 8);
+        glPopMatrix();
+    }
+
+    // ── Dirt path from fence gate down to the river bank ───────────────────────
+    glColor3ub(162, 132, 72);
+    glBegin(GL_QUADS);
+        glVertex2f(-2.6f, -0.2f);   glVertex2f( 0.6f, -0.2f);
+        glVertex2f( 0.6f,-10.30f);  glVertex2f(-2.6f,-10.30f);
+    glEnd();
 }
 
-// 7. Scattered bush clusters
+// 8. Scattered bush clusters
 void DrawBushes()
 {
     DrawBush( 6.5f, -2.5f, 0.55f, 28, 118, 20);
@@ -450,14 +595,38 @@ void DrawBushes()
     DrawBush(36.5f, -2.5f, 0.38f, 25, 115, 18);
 }
 
-// 8. Both village houses (no chimney smoke)
-void DrawAllHouses()
+// 9. Wildflower patches (stem + sphere bloom)
+void DrawFlowers()
 {
-    DrawHouse(-2.0f, -7.2f);   // House 1 (left)
-    DrawHouse(11.0f, -9.2f);   // House 2 (right)
+    float          fX[5] = {  5.0f,  8.2f, -8.0f,-10.5f,  4.0f };
+    float          fY[5] = { -2.8f, -1.5f, -3.0f, -2.0f, -1.8f };
+    unsigned char  fR[5] = { 255,  255,  200,  255,  255 };
+    unsigned char  fG[5] = {  80,  218,   80,   80,  148 };
+    unsigned char  fB[5] = { 120,   50,  255,  120,  255 };
+    for (int i = 0; i < 5; i++) {
+        glColor3ub(18, 98, 10);
+        glLineWidth(1.0f);
+        glBegin(GL_LINES);
+            glVertex2f(fX[i], fY[i]); glVertex2f(fX[i], fY[i]+0.5f);
+        glEnd();
+        glColor3ub(fR[i], fG[i], fB[i]);
+        glPushMatrix();
+            glTranslatef(fX[i], fY[i]+0.5f, 0.0f);
+            glutSolidSphere(0.18f, 10, 10);
+        glPopMatrix();
+    }
 }
 
-// 9. Four pine trees along the right bank
+// 10. Both village houses + chimney smoke
+void DrawAllHouses()
+{
+    DrawHouse(-2.0f, -7.2f);             // House 1 (left)
+    DrawHouse(11.0f, -9.2f);             // House 2 (right)
+    DrawSmoke(-2.0f + 1.75f, -7.2f + 7.75f);   // House 1 chimney top
+    DrawSmoke(11.0f + 1.75f, -9.2f + 7.75f);   // House 2 chimney top
+}
+
+// 11. Four pine trees along the right bank
 void DrawAllTrees()
 {
     DrawPineTree(19.0f, -10.0f, 1.00f);
@@ -466,7 +635,28 @@ void DrawAllTrees()
     DrawPineTree(33.8f, -10.5f, 0.72f);
 }
 
-// 10. Railway tracks + sleepers (perspective-foreshortened)
+// 12. Fence posts + horizontal rails (gate gap at dirt path)
+void DrawFence()
+{
+    for (float fx = -11.5f; fx <= 36.5f; fx += 2.2f) {
+        if (fx > -2.8f && fx < 0.8f) continue;   // gate gap
+        DrawFencePost(fx, -0.8f);
+    }
+    glColor3ub(198, 165, 112);
+    glLineWidth(1.4f);
+    // Left rail section
+    glBegin(GL_LINES);
+        glVertex2f(-11.5f, -0.15f); glVertex2f(-2.8f, -0.15f);
+        glVertex2f(-11.5f, -0.45f); glVertex2f(-2.8f, -0.45f);
+    glEnd();
+    // Right rail section
+    glBegin(GL_LINES);
+        glVertex2f(0.8f, -0.15f); glVertex2f(36.5f, -0.15f);
+        glVertex2f(0.8f, -0.45f); glVertex2f(36.5f, -0.45f);
+    glEnd();
+}
+
+// 13. Railway tracks + sleepers (perspective-foreshortened)
 void DrawRailway()
 {
     // Upper rail
@@ -508,10 +698,31 @@ void DrawRailway()
     glEnd();
 }
 
-// 11. Two static boats on the river (no translation / movement)
+// 14. Flying V-shaped bird flock
+void DrawBirds()
+{
+    glColor3ub(18, 18, 18);
+    glLineWidth(1.8f);
+    float bOff[5][2] = {{0.0f,9.0f},{2.8f,10.3f},{5.8f,8.7f},{8.8f,9.9f},{11.5f,9.3f}};
+    for (int i = 0; i < 5; i++) {
+        float bx = bOff[i][0] + moveBird;
+        float by = bOff[i][1];
+        if (bx > -13.0f && bx < 40.0f) {
+            glBegin(GL_LINE_STRIP);
+                glVertex2f(bx - 0.7f, by + 0.32f);
+                glVertex2f(bx,         by);
+                glVertex2f(bx + 0.7f, by + 0.32f);
+            glEnd();
+        }
+    }
+}
+
+// 15. Boat 1 (L→R sailboat) and Boat 2 (R→L cabin cruiser)
 void DrawBoats()
 {
-    // ── Boat 1 (sailboat) ────────────────────────────────────────────────────
+    // ── Boat 1 ────────────────────────────────────────────────────────────────
+    glPushMatrix();
+    glTranslatef(moveB1, 0.0f, 0.0f);
     glColor3ub(139, 69, 19);
     glBegin(GL_QUADS);
         glVertex2f( 1.0f,-14.0f); glVertex2f( 1.5f,-13.0f);
@@ -544,8 +755,11 @@ void DrawBoats()
     glBegin(GL_TRIANGLES);
         glVertex2f(-0.5f,-10.2f); glVertex2f(-0.5f,-13.0f); glVertex2f(-3.0f,-12.7f);
     glEnd();
+    glPopMatrix();
 
-    // ── Boat 2 (cabin cruiser) ────────────────────────────────────────────────
+    // ── Boat 2 ────────────────────────────────────────────────────────────────
+    glPushMatrix();
+    glTranslatef(moveB2, 0.0f, 0.0f);
     glColor3ub(139,69,19);
     glBegin(GL_QUADS);
         glVertex2f(22.0f,-17.5f); glVertex2f(21.0f,-16.5f);
@@ -576,6 +790,7 @@ void DrawBoats()
     glBegin(GL_TRIANGLES);
         glVertex2f(17.0f,-17.5f); glVertex2f(18.0f,-17.5f); glVertex2f(17.5f,-16.5f);
     glEnd();
+    glPopMatrix();
 }
 
 
@@ -592,37 +807,94 @@ void DrawAllComponents()
     glLoadIdentity();
 
     DrawSky();        //  1. Sky gradient
-    DrawSun();        //  2. Static sun + fixed rays
-    DrawMountains();  //  3. Far mountains + snow caps
-    DrawHills();      //  4. Layered near hills with crest detail
-    DrawRiver();      //  5. Static river water body
-    DrawGround();     //  6. Ground (no bank borders)
-    DrawBushes();     //  7. Bush clusters
-    DrawAllHouses();  //  8. Village houses (no smoke)
-    DrawAllTrees();   //  9. Pine trees
-    DrawRailway();    // 10. Railway tracks + sleepers
-    DrawBoats();      // 11. Static boats on river
+    DrawSun();        //  2. Sun + rotating rays
+    DrawClouds();     //  3. Drifting clouds
+    DrawMountains();  //  4. Far mountains + snow caps
+    DrawHills();      //  5. Layered near hills with crest detail
+    DrawRiver();      //  6. River water + animated waves
+    DrawGround();     //  7. Ground + river-bank differentiator + reeds + path
+    DrawBushes();     //  8. Bush clusters
+    DrawFlowers();    //  9. Wildflowers
+    DrawAllHouses();  // 10. Village houses + chimney smoke
+    DrawAllTrees();   // 11. Professional pine trees
+    DrawFence();      // 12. Fence + rails
+    DrawRailway();    // 13. Railway tracks + sleepers
+    DrawBirds();      // 14. Flying bird flock
+    DrawBoats();      // 15. Animated boats on river
 
     glutSwapBuffers();
 }
 
-void display(void){
-    DrawAllComponents();
+
+// ── Timer callbacks ───────────────────────────────────────────────────────────
+void updateC(int v)
+{
+    moveC = (moveC > 36.0f) ? -38.0f : moveC + 0.15f;
+    glutTimerFunc(20, updateC, 0);
+    glutPostRedisplay();
 }
-void init(){
-    glClearColor(0.42f, 0.71f, 0.98f, 1.0f);
+
+void updateB1(int v)
+{
+    moveB1 += speed;
+    if (moveB1 > 38.0f) moveB1 = -38.0f;
+    glutTimerFunc(20, updateB1, 0);
+    glutPostRedisplay();
+}
+
+void updateB2(int v)
+{
+    if (moveB2 < -36.0f) moveB2 = 38.0f;
+    moveB2 -= 0.13f;
+    glutTimerFunc(20, updateB2, 0);
+    glutPostRedisplay();
+}
+
+void updateExtras(int v)
+{
+    moveBird  += 0.08f;
+    if (moveBird > 52.0f) moveBird = -26.0f;
+    smokeOff = fmodf(smokeOff + 0.007f, 1.0f);
+    rayAngle += 0.004f;
+    glutTimerFunc(30, updateExtras, 0);
+    glutPostRedisplay();
+}
+
+// ── Input handlers ────────────────────────────────────────────────────────────
+void handleKeypress(unsigned char key, int x, int y)
+{
+    if      (key == 's') speed = 0.0f;
+    else if (key == 'r') speed = 0.02f;
+    glutPostRedisplay();
+}
+
+void handleMouse(int button, int state, int x, int y)
+{
+    if      (button == GLUT_LEFT_BUTTON)  speed += 0.05f;
+    else if (button == GLUT_RIGHT_BUTTON) speed -= 0.05f;
+    glutPostRedisplay();
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
+void display(void) { DrawAllComponents(); }
+void init()        { glClearColor(0.42f, 0.71f, 0.98f, 1.0f); }
+
 int main(int argc, char** argv)
 {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowSize(1300, 700);
     glutInitWindowPosition(100, 100);
-    glutCreateWindow(" Village Scenery – Initial ");
+    glutCreateWindow(" Village Scenery – Enhanced ");
     init();
 
+    glutTimerFunc(100, updateC,      1);
+    glutTimerFunc(100, updateB1,     0);
+    glutTimerFunc(100, updateB2,     0);
+    glutTimerFunc(100, updateExtras, 0);
+
+    glutKeyboardFunc(handleKeypress);
+    glutMouseFunc(handleMouse);
     glutDisplayFunc(display);
 
     glutMainLoop();
