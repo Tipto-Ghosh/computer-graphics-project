@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1777122983 source:d:\tipto\semester8\tidyvillage\main.cpp
+1777566706 source:d:\tipto\semester8\tidyvillage\main.cpp
 	<GL/gl.h>
 	<GL/glut.h>
 	<math.h>
