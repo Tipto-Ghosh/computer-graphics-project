@@ -302,7 +302,7 @@ void city_drawTrees(){
 
 // city ground and road
 void city_drawGround(){
-    // grash
+    // ghash
     glColor3f(0.18f,0.48f,0.16f);
     city_rect(0,0,CW,50);
 
@@ -1383,29 +1383,14 @@ bool isDayMode = true;
 float moveC  = 0.0f;
 float moveB1 = 0.0f;
 float moveB2 = 0.0f;
-// float moveBird = -15.0f;
+float moveBird = -15.0f;
 float smokeOff = 0.0f;
 float speed  = 0.02f;
-struct VillageBird {
-    float x, y, phase;
-};
-const int VNBIRDS = 5; // num of birds
-VillageBird vbirds[VNBIRDS];
-bool vbirdsInit = false;
+
 float rayAngle = 0.0f;
 float moonGlow = 0.0f;
 float starTwinkle = 0.0f;
 float fireflyT = 0.0f;
-
-void initVillageBirds() {
-    srand(42);
-    for (int i = 0; i < VNBIRDS; i++) {
-        vbirds[i].x = -12.0f + (rand() % 50);// the visible width
-        vbirds[i].y = 8.0f + (rand() % 30) * 0.1f;// height between 8.0 and 11.0
-        vbirds[i].phase = (rand() % 100) / 100.0f * 6.28318f; // 0 .. 2pi
-    }
-    vbirdsInit = true;
-}
 
 // village day helper
 
@@ -2231,20 +2216,19 @@ void Day_DrawFence(){
 }
 
 void Day_DrawBirds(){
-    if (!vbirdsInit) {
-        initVillageBirds();
-    }
     glColor3ub(18, 18, 18);
     glLineWidth(1.8f);
-    for (int i = 0; i < VNBIRDS; i++) {
-        float bx = vbirds[i].x;
-        float by = vbirds[i].y + sinf(gTime * 1.2f + vbirds[i].phase) * 0.8f;
-        float wing = sinf(gTime * 5.0f + vbirds[i].phase);
+    float bOff[5][2] = {{0.0f,9.0f},{2.8f,10.3f},{5.8f,8.7f},{8.8f,9.9f},{11.5f,9.3f}};
+    for(int i = 0; i < 5; i++) {
+      float bx = bOff[i][0] + moveBird;
+      float by = bOff[i][1];
+      if(bx > -13.0f && bx < 40.0f){
         glBegin(GL_LINE_STRIP);
-        glVertex2f(bx - 0.7f, by + wing * 0.3f);
-        glVertex2f(bx, by);
-        glVertex2f(bx + 0.7f, by + wing * 0.3f);
+        glVertex2f(bx - 0.7f, by + 0.32f);
+        glVertex2f(bx,by);
+        glVertex2f(bx + 0.7f, by + 0.32f);
         glEnd();
+      }
     }
 }
 
@@ -3248,7 +3232,6 @@ void Night_DrawAllTrees(){
 
 void Night_DrawFence(){
     for (float fx = -11.5f; fx <= 36.5f; fx += 2.2f) {
-        // opening of the fense
         if (fx > -2.8f && fx < 0.8f){
             continue;
         }
@@ -3273,20 +3256,19 @@ void Night_DrawFence(){
 
 
 void Night_DrawBirds(){
-    if (!vbirdsInit) {
-        initVillageBirds();
-    }
     glColor3ub(8, 8, 22);
     glLineWidth(1.6f);
-    for (int i = 0; i < VNBIRDS; i++) {
-        float bx = vbirds[i].x;
-        float by = vbirds[i].y + sinf(gTime * 1.2f + vbirds[i].phase) * 0.8f;
-        float wing = sinf(gTime * 5.0f + vbirds[i].phase);
-        glBegin(GL_LINE_STRIP);
-        glVertex2f(bx - 0.7f, by + wing * 0.3f);
-        glVertex2f(bx, by);
-        glVertex2f(bx + 0.7f, by + wing * 0.3f);
-        glEnd();
+    float bOff[5][2] = {{0.0f,9.0f},{2.8f,10.3f},{5.8f,8.7f},{8.8f,9.9f},{11.5f,9.3f}};
+    for(int i = 0; i < 5; i++){
+        float bx = bOff[i][0] + moveBird;
+        float by = bOff[i][1];
+        if(bx > -13.0f && bx < 40.0f){
+            glBegin(GL_LINE_STRIP);
+            glVertex2f(bx - 0.7f, by + 0.32f);
+            glVertex2f(bx,by);
+            glVertex2f(bx + 0.7f, by + 0.32f);
+            glEnd();
+        }
     }
 }
 
@@ -3463,12 +3445,9 @@ void updateTimer(int){
     moonGlow += 0.018f;
     starTwinkle += 0.025f;
     fireflyT += 0.040f;
-    
-    for (int i = 0; i < VNBIRDS; i++) {
-        vbirds[i].x += 0.03f; // move bird to left to right (x axis)
-        if (vbirds[i].x > 40.0f){
-           vbirds[i].x = -14.0f; // wrap when off screen right 
-        }                 
+    moveBird += (isDayMode ? 0.08f : 0.06f);
+    if (moveBird > 52.0f){
+      moveBird = -26.0f;
     }
     glutPostRedisplay();
     glutTimerFunc(16, updateTimer, 0);
@@ -3509,6 +3488,14 @@ void keyboard(unsigned char key, int, int){
             }
             glutPostRedisplay();
             break;
+        case 'd': case 'D':
+            if(currentScene == SCENE_CITY){
+                tod = (tod == DUSK) ? DAY : DUSK;
+            }
+            else
+                isDayMode = true;
+            glutPostRedisplay();
+            break;
         case 's':
             speed = 0.0f;
             break;
@@ -3518,9 +3505,10 @@ void keyboard(unsigned char key, int, int){
     }
 }
 
+
 void handleMouse(int button, int state, int, int){
     const float MAX_SPEED = 0.30f;
-    const float MIN_SPEED = 0.02f;
+    const float MIN_SPEED = 0.00f;
 
     if(currentScene == SCENE_VILLAGE && state == GLUT_DOWN){
         if(button == GLUT_LEFT_BUTTON){
@@ -3541,11 +3529,8 @@ void handleMouse(int button, int state, int, int){
         }
         glutPostRedisplay();
     }
-    else if(currentScene == SCENE_CITY && state == GLUT_DOWN && button == GLUT_LEFT_BUTTON){
-        tod = (tod == DUSK) ? DAY : DUSK;
-        glutPostRedisplay();
-    }
 }
+
 int main(int argc, char** argv){
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
@@ -3566,7 +3551,7 @@ int main(int argc, char** argv){
     glutKeyboardFunc(keyboard);
     glutMouseFunc(handleMouse);
     //  timer drives city + village extras
-    glutTimerFunc(16,  updateTimer,  0); // 1000/16 = 60 fps update
+    glutTimerFunc(16,  updateTimer,  0);
     // Boat timers
     glutTimerFunc(20,  updateBoats,  0);
     glutTimerFunc(20,  updateClouds, 0);
