@@ -3463,12 +3463,12 @@ void updateTimer(int){
     moonGlow += 0.018f;
     starTwinkle += 0.025f;
     fireflyT += 0.040f;
-    
+
     for (int i = 0; i < VNBIRDS; i++) {
         vbirds[i].x += 0.03f; // move bird to left to right (x axis)
         if (vbirds[i].x > 40.0f){
-           vbirds[i].x = -14.0f; // wrap when off screen right 
-        }                 
+           vbirds[i].x = -14.0f; // wrap when off screen right
+        }
     }
     glutPostRedisplay();
     glutTimerFunc(16, updateTimer, 0);
@@ -3492,7 +3492,6 @@ void keyboard(unsigned char key, int, int){
     switch(key){
         case 'c': case 'C':
             currentScene = SCENE_CITY;
-            // Reset city projection for starting city
             glutPostRedisplay();
             break;
         case 'v': case 'V':
@@ -3500,12 +3499,17 @@ void keyboard(unsigned char key, int, int){
             glutPostRedisplay();
             break;
 
-        // City control
         case 'n': case 'N':
             if(currentScene == SCENE_CITY)
                 tod = (tod == NIGHT) ? DAY : NIGHT;
             else{
                 isDayMode = false;
+            }
+            glutPostRedisplay();
+            break;
+        case 'd': case 'D':
+            if(currentScene == SCENE_VILLAGE){
+                isDayMode = true;
             }
             glutPostRedisplay();
             break;
